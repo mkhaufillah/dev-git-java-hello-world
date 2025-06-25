@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        TEST_RESULT = '' // Global variable to store test result
+    }
+
     stages {
         stage('Build') {
             steps {
@@ -19,15 +23,24 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Cloning and running tests from bootcamp-batch3...'
-                sh '''
-                    rm -rf bootcamp-batch3
-                    git clone https://github.com/afteroffice466/bootcamp-batch3
-                    cd bootcamp-batch3
-                    git checkout headless-chrome
-                    mvn install -DskipTests
-                    mvn test -DsuiteXml=src/test/resources/selenium_page_factory/runner_regresion_cucumber.xml -Denv=production
-                    cd ..
-                '''
+                script {
+                    sh '''
+                        rm -rf bootcamp-batch3
+                        git clone https://github.com/afteroffice466/bootcamp-batch3
+                        cd bootcamp-batch3
+                        git checkout headless-chrome
+                        mvn install -DskipTests
+                    '''
+
+                    // Capture mvn test output
+                    def result = sh(
+                        script: 'cd bootcamp-batch3 && mvn test -DsuiteXml=src/test/resources/selenium_page_factory/runner_regresion_cucumber.xml -Denv=production',
+                        returnStdout: true
+                    ).trim()
+
+                    env.TEST_RESULT = result
+                    echo "Test Result:\n${env.TEST_RESULT}"
+                }
             }
         }
 
@@ -44,7 +57,7 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline selesai.'
+            echo "Final test result (saved variable):\n${env.TEST_RESULT}"
         }
     }
 }
